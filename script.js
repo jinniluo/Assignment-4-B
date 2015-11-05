@@ -35,25 +35,108 @@ plot.append('g').attr('class','axis axis-x')
 plot.append('g').attr('class','axis axis-y')
     .call(axisY);
 
+
+var lineGenerator = d3.svg.line()
+    .x(function(d){ return scaleX(d.year)})
+    .y(function(d){ return scaleY(d.value)});
+
+
 //Start importing data
-d3.csv('/data/world_bank_2012.csv', parse, dataLoaded);
+d3.csv('/data/fao_combined_world_1963_2013.csv', parse, dataLoaded);
+
 
 function parse(d){
-
-    //Eliminate records for which gdp per capita isn't available
-
-    //Check "primary completion" and "urban population" columns
-    //if figure is unavailable and denoted as "..", replace it with undefined
-    //otherwise, parse the figure into numbers
     return {
+        item: d.ItemName,
+        value: +d.Value,
+        year: +d.Year
+    }
+}
 
-    };
+
+function dataLoaded(error, data){
+console.log(data);
+//put data into group according to category
+
+    var nestedData=d3.nest()
+        .key(function(d){return d.item})
+        .entries(data);
+    console.log("nested", nestedData);
+
+    plot
+        .append('path')
+        .datum(nestedData[0].values)
+        .attr('class','data-line tea-data-line')
+        .attr('d',lineGenerator)
+        //.call(attachTooltip);
+
+    plot
+        .append('path')
+        .datum(nestedData[1].values)
+        .attr('class','data-line coffee-data-line')
+        .attr('d',lineGenerator)
+       // .call(attachTooltip);
+
+    plot.selectAll('item')
+        .data(data)
+        .enter()
+        .append('circle').attr('class','item')
+        .attr('cx',function(d){return scaleX(d.year)})
+        .attr('cy',function(d){return scaleY(d.value)})
+        .attr('r',2)
+        .style('fill-opacity',.5)
+        .call(attachTooltip);
+
 
 
 
 }
 
-function dataLoaded(error, rows){
+/*
+function draw(dataSeries){
 
+
+    var dots = plot.selectAll('.data-point')
+        .data(dataSeries);
+    var dotsEnter = dots.enter()
+        .append('circle')
+        .attr('class','data-point')
+        .attr('r',3)
+        .call(attachTooltip);
+    dots.exit().transition().remove();
+    dots
+        .transition()
+        .attr('cx',function(d){return scaleX(d.year)})
+        .attr('cy',function(d){return scaleY(d.value)});
 }
+*/
 
+function attachTooltip(selection){
+    selection
+        .on('mouseenter',function(d){
+            var tooltip = d3.select('.custom-tooltip');
+            tooltip
+                .transition()
+                .style('opacity',1);
+
+            tooltip.select('#item').html(d.item);
+            tooltip.select('#year').html(d.year);
+            tooltip.select('#value').html(d.value);
+        })
+        .on('mousemove',function(){
+            var xy = d3.mouse(canvas.node());
+            console.log(xy);
+
+            var tooltip = d3.select('.custom-tooltip');
+
+            tooltip
+                .style('left',xy[0]+50+'px')
+                .style('top',xy[1]+50+'px');
+
+        })
+        .on('mouseleave',function(){
+            var tooltip = d3.select('.custom-tooltip')
+                .transition()
+                .style('opacity',0);
+        })
+}
